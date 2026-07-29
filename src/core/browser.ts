@@ -10,6 +10,7 @@ import {
   GOTO_TIMEOUT,
   type BrowserConfig
 } from './config';
+import { deferPasswordChangeIfRequired, isPasswordExpiryNoticeUrl } from './password-expiry';
 
 export class BrowserSession {
   private browser: Browser | null = null;
@@ -74,6 +75,11 @@ export class BrowserSession {
 
     console.log('[Browser] Waiting for login result');
     await this.waitForLoginResult();
+
+    if (await deferPasswordChangeIfRequired(this.page)) {
+      console.log('[Browser] Waiting for login result after deferring password change');
+      await this.waitForLoginResult();
+    }
 
     // Check success
     if (await this.isLoginSuccessful()) {
@@ -189,6 +195,9 @@ export class BrowserSession {
     try {
       await Promise.race([
         this.page.waitForURL(url => url.toString().includes(URLS.MAIN), {
+          timeout: BROWSER_LOGIN_TIMEOUT
+        }),
+        this.page.waitForURL(url => isPasswordExpiryNoticeUrl(url.toString()), {
           timeout: BROWSER_LOGIN_TIMEOUT
         }),
         successIndicator.waitFor({

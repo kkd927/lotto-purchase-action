@@ -2,6 +2,7 @@
 export const URLS = {
   MAIN: 'https://www.dhlottery.co.kr/main',
   LOGIN: 'https://www.dhlottery.co.kr/login',
+  PASSWORD_EXPIRY_NOTICE: 'https://www.dhlottery.co.kr/mbrsrvc/ExpryPswdNoti',
   LOGOUT: 'https://www.dhlottery.co.kr/logout.do',
   MYPAGE_HOME: 'https://www.dhlottery.co.kr/mypage/home',
   LOTTO_645: 'https://ol.dhlottery.co.kr/olotto/game/game645.do',
@@ -15,6 +16,7 @@ export const SELECTORS = {
   PWD_INPUT: '#inpUserPswdEncn',
   LOGIN_BUTTON: '#btnLogin',
   LOGIN_ERROR_POPUP: '.msgPop[role="alertdialog"]',
+  PASSWORD_EXPIRY_DEFER_BUTTON: '#btnCancel',
 
   // Purchase page
   ENVIRONMENT_ALERT_CONFIRM: 'input[value="확인"][onclick="javascript:closepopupLayerAlert();"]',

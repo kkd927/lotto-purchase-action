@@ -30827,6 +30827,7 @@ var coreExports = requireCore();
 const URLS = {
     MAIN: 'https://www.dhlottery.co.kr/main',
     LOGIN: 'https://www.dhlottery.co.kr/login',
+    PASSWORD_EXPIRY_NOTICE: 'https://www.dhlottery.co.kr/mbrsrvc/ExpryPswdNoti',
     LOGOUT: 'https://www.dhlottery.co.kr/logout.do',
     MYPAGE_HOME: 'https://www.dhlottery.co.kr/mypage/home',
     LOTTO_645: 'https://ol.dhlottery.co.kr/olotto/game/game645.do',
@@ -30839,6 +30840,7 @@ const SELECTORS = {
     PWD_INPUT: '#inpUserPswdEncn',
     LOGIN_BUTTON: '#btnLogin',
     LOGIN_ERROR_POPUP: '.msgPop[role="alertdialog"]',
+    PASSWORD_EXPIRY_DEFER_BUTTON: '#btnCancel',
     // Purchase page
     ENVIRONMENT_ALERT_CONFIRM: 'input[value="확인"][onclick="javascript:closepopupLayerAlert();"]',
     PURCHASE_TYPE_MIXED_BTN: 'a[href="#divWay2Buy1"]#num1',
@@ -30863,6 +30865,35 @@ const LOGIN_SUCCESS_TEXT = '로그아웃';
 const GOTO_TIMEOUT = 60000;
 const PURCHASE_PAGE_READY_TIMEOUT = 15000;
 const PURCHASE_RESULT_TIMEOUT = 10000;
+
+function isPasswordExpiryNoticeUrl(url) {
+    return url.includes(URLS.PASSWORD_EXPIRY_NOTICE);
+}
+function deferPasswordChangeIfRequired(page) {
+    return __awaiter$3(this, void 0, void 0, function* () {
+        if (!isPasswordExpiryNoticeUrl(page.url())) {
+            return false;
+        }
+        console.log('[Browser] Password change notice detected; choosing "Change later"');
+        try {
+            yield Promise.all([
+                page.waitForURL(url => !isPasswordExpiryNoticeUrl(url.toString()), {
+                    timeout: BROWSER_LOGIN_TIMEOUT
+                }),
+                page.locator(SELECTORS.PASSWORD_EXPIRY_DEFER_BUTTON).click({
+                    timeout: BROWSER_LOGIN_TIMEOUT
+                })
+            ]);
+        }
+        catch (error) {
+            const cause = error instanceof Error ? `: ${error.message}` : '';
+            throw new Error(`Login failed: Could not defer the password change notice. ` +
+                `Please change the password manually on dhlottery.co.kr${cause}`);
+        }
+        console.log('[Browser] Password change deferred successfully');
+        return true;
+    });
+}
 
 class BrowserSession {
     constructor() {
@@ -30921,6 +30952,10 @@ class BrowserSession {
             yield rsaResponsePromise;
             console.log('[Browser] Waiting for login result');
             yield this.waitForLoginResult();
+            if (yield deferPasswordChangeIfRequired(this.page)) {
+                console.log('[Browser] Waiting for login result after deferring password change');
+                yield this.waitForLoginResult();
+            }
             // Check success
             if (yield this.isLoginSuccessful()) {
                 console.log('[Browser] Login successful');
@@ -31030,6 +31065,9 @@ class BrowserSession {
             try {
                 yield Promise.race([
                     this.page.waitForURL(url => url.toString().includes(URLS.MAIN), {
+                        timeout: BROWSER_LOGIN_TIMEOUT
+                    }),
+                    this.page.waitForURL(url => isPasswordExpiryNoticeUrl(url.toString()), {
                         timeout: BROWSER_LOGIN_TIMEOUT
                     }),
                     successIndicator.waitFor({
